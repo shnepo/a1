@@ -2,17 +2,23 @@ from tsp import *
 import numpy as np
 
 def swap_operator(path):
-    mutation = np.random.choice(len(path), 2, replace = False)
-    path[mutation[0]], path[mutation[1]] = path[mutation[1]], path[mutation[0]]
+    mutation = np.random.choice(len(path), 2, replace = False) # Choosing two random gene indexes
+    path[mutation[0]], path[mutation[1]] = path[mutation[1]], path[mutation[0]] # swapping
     return  path
 
 def inversion_operator(path):
-    mutation = np.random.choice(len(path), 2, replace = False)
-    if mutation[0]>mutation[1]:
-        rightHalf = np.arange(mutation[0], len(path))
-        leftHalf = np. arange(0, mutation[1]+1)
-        mutationIdxs = np.append(rightHalf, leftHalf)
-    else:
+    """Inverse a random segment of the path/indivual/chromosome.
+    Parameters:
+        path (np.ndarray): one solution to problem
+    Returns:
+        path (np.ndarray): mutated path, with a random segment inverted
+    """
+    mutation = np.random.choice(len(path), 2, replace = False) 
+    if mutation[0] > mutation[1]: # outsides of path being inversed 
+        rightHalf = np.arange(mutation[0], len(path)) # creates array of numbers for remaining right half of array
+        leftHalf = np.arange(0, mutation[1] + 1) # same for the left half up to lower index chosen
+        mutationIdxs = np.append(rightHalf, leftHalf) # invert the two halves
+    else: # inside of path being inversed
         mutationIdxs = np.arange(mutation[0],mutation[1])
     path[mutationIdxs] = path[mutationIdxs[::-1]]
     return path
