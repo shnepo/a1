@@ -25,7 +25,7 @@ def random_search(upper_limit):
         # generates a random route
         random_route = np.random.permutation(tsp.dim)
 
-        # evaluates the random route
+        # evaluates the random route and tsp class adds Leiden to begining and end of route
         distance_random_route = tsp(random_route)
 
         current_route = (random_route, distance_random_route)
@@ -41,10 +41,13 @@ def random_search(upper_limit):
         # check if we reached upper limit
         if total_routes_since_last_update >= upper_limit:
             break 
-
+    
+    with TSP(plot=True) as tsp_plot:
+        tsp_plot.plot_route(tsp_plot.create_path(best_route[0]), best_route[1])
+         
     return best_route
 
 if __name__ == "__main__":
-    upper_limit = 100  # set upper limit
+    upper_limit = 100000  # set upper limit
     best_route = random_search(upper_limit)
     print(f"Best route: {best_route[0]}, Distance: {best_route[1]:.2f} km")
