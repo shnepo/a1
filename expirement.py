@@ -20,7 +20,7 @@ def run_ga_experiment(mutation_operator):
 
 if __name__ == "__main__":
     # Run Random Search Experiment
-    upper_limit = 100000 # amount of times RS continues to try without an improvement being found.
+    upper_limit = 1000 # set equal to max_unchanged_iterations for GA for fair assessment 
     run_random_search_experiment(upper_limit)
     
     # Run GA Experiment with Swap Mutation
