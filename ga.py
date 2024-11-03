@@ -1,114 +1,123 @@
+from tsp import * 
 import numpy as np
-from tsp import TSP
 import matplotlib.pyplot as plt
 
 class GeneticAlgorithm:
-    def __init__(self, n_paths=30, max_unchanged_iterations=1000, survival_rate=65, mutation_rate=15, mutation_operator='swap'):
-        """
-        Initialize the GeneticAlgorithm class.
+    def __init__(self, nPaths=30, survivalRate=65, mutationRate=20, endParameter="epoch", endParameterMax=2000, mutationOperator="inversion"):
+        self.nPaths = nPaths
+        self.survivalRate = survivalRate
+        self.mutationRate = mutationRate
+        self.crossoverRate = 100 - (survivalRate + mutationRate)
+        self.mutationOperator = self.inversionOperator if mutationOperator == "inversion" else self.swapOperator
+        self.end = lambda: (self.epoch >= endParameterMax) if endParameter == "epoch" else  (lambda: self.unchangedIterations >= endParameterMax)  
+        self.epoch = 0
+        self.unchangedIterations = 0
 
-        Parameters:
-            n_paths (int): Number of paths (individuals) in the population.
-            max_unchanged_iterations (int): Max iterations without improvement before stopping.
-            survival_rate (int): Percentage of population retained as parents.
-            mutation_rate (int): Percentage of population to mutate.
-            mutation_operator (str): Mutation operator to use ('swap' or 'inversion').
-        """
-        self.n_paths = n_paths
-        self.max_unchanged_iterations = max_unchanged_iterations
-        self.survival_rate = survival_rate
-        self.mutation_rate = mutation_rate
-        self.mutation_operator = self.swap_operator if mutation_operator == 'swap' else self.inversion_operator
-        self.best_distance = float('inf')
-        self.best_route = None
-        self.convergence_history = []
+    @staticmethod
+    def swapOperator(path):
+        """swap two random genes in the given path/individual/chromosome.
 
-    def swap_operator(self, path):
-        """Mutates a path by swapping two random cities."""
-        mutation = np.random.choice(len(path), 2, replace=False)
-        path[mutation[0]], path[mutation[1]] = path[mutation[1]], path[mutation[0]]
+        parameters:
+            path (np.ndarray): one solution to the problem.
+
+        returns:
+            np.ndarray: the mutated path, with two genes swapped.
+        """
+        mutation = np.random.choice(len(path), 2, replace=False)  # choosing two random gene indexes
+        path[mutation[0]], path[mutation[1]] = path[mutation[1]], path[mutation[0]]  # swapping
         return path
 
-    def inversion_operator(self, path):
-        """Mutates a path by inverting a random segment."""
-        mutation = np.random.choice(len(path), 2, replace=False)
-        start, end = min(mutation), max(mutation)
-        path[start:end] = path[start:end][::-1]
+    @staticmethod
+    def inversionOperator(path):
+        """inverse a random segment of the path/individual/chromosome.
+
+        parameters:
+            path (np.ndarray): one solution to the problem.
+
+        returns:
+            np.ndarray: the mutated path, with a random segment inverted.
+        """
+        mutation = np.random.choice(len(path), 2, replace=False) 
+        if mutation[0] > mutation[1]:  # outsides of path being inversed 
+            righthalf = np.arange(mutation[0], len(path))  # creates array of numbers for remaining right half of array
+            lefthalf = np.arange(0, mutation[1] + 1)  # same for the left half up to lower index chosen
+            mutationidxs = np.append(righthalf, lefthalf)  # invert the two halves
+        else:  # inside of path being inversed
+            mutationidxs = np.arange(mutation[0], mutation[1])
+        path[mutationidxs] = path[mutationidxs[::-1]] 
         return path
 
-    def crossover_operator(self, parent1, parent2):
-        """Performs ordered crossover between two parent paths."""
-        start, end = sorted(np.random.choice(len(parent1), 2, replace=False))
-        child = [-1] * len(parent1)
-        child[start:end] = parent1[start:end]
-        
-        pointer = end
-        for gene in parent2:
-            if gene not in child:
-                if pointer == len(child):
-                    pointer = 0
-                child[pointer] = gene
-                pointer += 1
-        return np.array(child)
+    @staticmethod
+    def crossoverOperator(path0, path1):
+        """perform crossover between two paths/individuals/chromosomes.
 
-    def optimize(self):
-        """Runs the genetic algorithm optimization process for TSP."""
-        tsp = TSP(plot=False)
-        # Initialize population with random paths
-        population = np.array([np.random.permutation(tsp.dim) for _ in range(self.n_paths)])
-        distances = np.array([tsp(path) for path in population])
-        
-        # Set initial best path
-        self.best_distance = distances.min()
-        self.best_route = population[distances.argmin()]
-        unchanged_iterations = 0
-        
-        while unchanged_iterations < self.max_unchanged_iterations:
-            # Track convergence
-            self.convergence_history.append(self.best_distance)
-            
-            # Selection: Retain top performers
-            sorted_indices = np.argsort(distances)
-            population = population[sorted_indices][:self.n_paths * self.survival_rate // 100]
-            
-            # Mutation
-            while len(population) < self.n_paths * (self.survival_rate + self.mutation_rate) / 100:
-                individual = self.mutation_operator(population[np.random.randint(len(population))].copy())
-                population = np.vstack([population, individual])
-            
-            # Crossover
-            while len(population) < self.n_paths:
-                parent1, parent2 = population[np.random.choice(len(population), 2, replace=False)]
-                child = self.crossover_operator(parent1, parent2)
-                population = np.vstack([population, child])
-            
-            # Update distances and check if we improved
-            distances = np.array([tsp(path) for path in population])
-            current_best_distance = distances.min()
-            
-            if current_best_distance < self.best_distance:
-                self.best_distance = current_best_distance
-                self.best_route = population[distances.argmin()]
-                unchanged_iterations = 0
+        parameters:
+            path0 (np.ndarray): the first parent path.
+            path1 (np.ndarray): the second parent path.
+
+        returns:
+            np.ndarray: the mutated path resulting from the crossover operation.
+        """
+        start = np.random.choice(len(path0))
+        end = np.random.choice(range(start, len(path0) + 1))
+        crossoverstring = path0[start:end] 
+        path1 = path1[np.isin(path1, crossoverstring, invert=True)]
+        path1 = np.insert(path1, start, crossoverstring)
+        return path1
+
+    def __call__(self):
+        """execute a genetic algorithm to optimize the tsp solution.
+
+        parameters:
+            npaths (int): the number of paths in the population.
+            maxunchangediterations (int): the maximum number of iterations without improvement.
+            survivalrate (int): the percentage of paths that survive to the next generation.
+            mutationrate (int): the percentage of paths that are mutated in the next generation.
+            mutationoperator (function): the function used to perform mutations on paths.
+
+        returns:
+            none: this function does not return a value but prints results and plots the best route found.
+        """
+        tsp = TSP()
+        paths = np.array([np.random.permutation(tsp.dim) for _ in range(self.nPaths)])
+        distances = np.array([tsp(path) for path in paths])
+        self.history = []
+        self.minDist = np.min(distances)
+        self.history.append(self.minDist)
+        print(f"initial smallest distance = {self.minDist}\ninitiating genetic algorithm\n")
+        while not self.end():
+            # best % survives, unique produces the indexes of distances that produce the sorting of unique items, used to choose the surviving paths
+            _, sortingidxs = np.unique(distances, return_index=True)
+            paths = paths[sortingidxs][:self.nPaths * self.survivalRate // 100]
+            # teenage turtles
+            while len(paths) < self.nPaths * (self.survivalRate + self.mutationRate) / 100:
+                idx = np.random.choice(len(paths))
+                mutatedpath = self.mutationOperator(paths[idx].copy())
+                paths = np.append(paths, [mutatedpath], axis=0)
+            # perform crossovers in the original surviving paths
+            crossovers = [np.random.choice(self.nPaths * self.survivalRate // 100, 2, replace=False) for _ in range(self.nPaths * self.crossoverRate // 100)]
+            for crossover in crossovers:
+                crossoveredpath = self.crossoverOperator(paths[crossover[0]].copy(), paths[crossover[1]].copy())
+                paths = np.append(paths, [crossoveredpath], axis=0)
+            # calculate new distances and keep track if improvements are being made
+            distances = np.array([tsp(path) for path in paths])
+            newMin = np.min(distances)
+            if newMin < self.minDist:
+                self.mindist = newMin
+                self.unchangedIterations = 0
             else:
-                unchanged_iterations += 1
-
-        # Optionally plot the best route found
-        self.plot_best_route(tsp)
-        return self.best_route, self.best_distance
-
-    def plot_best_route(self, tsp):
-        """Plots the best route found on the map of Europe."""
-        with TSP(plot=True) as tsp_plot:
-            tsp_plot.plot_route(tsp_plot.create_path(self.best_route), self.best_distance)
-
-    def plot_convergence(self):
-        """Plot the convergence history of the GA search."""
-        plt.figure(figsize=(10, 6))
-        plt.plot(self.convergence_history, label="Genetic Algorithm Convergence")
-        plt.xlabel("Generations")
-        plt.ylabel("Best Distance Found")
-        plt.title("Genetic Algorithm Convergence Plot")
-        plt.legend()
-        plt.show()
+                self.unchangedIterations += 1
+            # print status once every 50 epochs and update epoch
+            if (not self.epoch % 50):
+                print(f'epoch {self.epoch}...')
+                print(f'smallest distance = {newMin}')
+            self.epoch += 1
+            self.history.append(newMin)
+        self.bestRoute = paths[np.argmin(distances)]
+        self.bestDistance = np.min(distances)
+    def plotPath(self):
+        with TSP(plot=True) as tsp:
+            tsp.plot_route(self.bestRoute, self.bestDistance)
+    def plotConvergence(self, label='', xInterval=1):
+        plt.plot(range(0, len(self.history)*xInterval, xInterval), self.history, label=label)
 
